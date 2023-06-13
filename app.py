@@ -22,7 +22,7 @@ if choice == "Upload":
     st.title("Upload")
     file = st.file_uploader('Uplad Dataset')
     if file :
-        df = pd.read_csv(file, index_col = None)
+        df = pd.read_csv(file, index_col = 0)
         st.session_state.df = df
         st.dataframe(df)
         try :
@@ -31,10 +31,10 @@ if choice == "Upload":
             pass
         df.to_csv('./Datasets/source_data.csv' ,index = None)
 
-        chosen_target = st.selectbox('Choose the Target Column', df.columns , index = list(df.columns).index('x-axis'))
+        chosen_target = st.selectbox('Choose the Target Column', df.columns )
         st.bar_chart(df[str(chosen_target)].value_counts())
 
-        chosen_pie_target = st.selectbox('Choose the Target Column Pie', df.columns , index = list(df.columns).index('activity'))
+        chosen_pie_target = st.selectbox('Choose the Target Column Pie', df.columns )
         fig1, ax1 = plt.subplots()
         plt.rcParams['figure.facecolor'] = 'black'
         ax1.pie(x=df[str(chosen_pie_target)].value_counts(),
@@ -65,34 +65,38 @@ if choice == "Profiling":
 
 if choice == "Modeling":
     st.title("Modeling")
+
+    df = st.session_state.df 
     try :
-        df = st.session_state.df 
-        chosen_target = st.selectbox('Choose the Target Column', df.columns)
-        if st.button('Run Modelling'): 
-            setup(df, target=chosen_target, silent=True)
-            setup_df = pull()
-            st.dataframe(setup_df)
-            st.session_state.setup_df = setup_df
-            best_model = compare_models()
-            compare_df = pull()
-            st.dataframe(compare_df)
-            st.session_state.compare_df = compare_df
-            save_model(best_model, 'best_model') # saved remotely
-            st.session_state.best_model = best_model
+        df.drop('ID' , axis = 1 , inplace = True)
+        df.drop('Time' , axis = 1 , inplace = True)
+    except: 
+        pass
+    chosen_target = st.selectbox('Choose the Target Column', df.columns)
+    if st.button('Run Modelling'): 
+        setup(df, target=chosen_target, silent=True , fix_imbalance= True, outliers_threshold= 0.001 , normalize= True)
+        setup_df = pull()
+        st.dataframe(setup_df , use_container_width= True)
+        st.session_state.setup_df = setup_df
+        best_model = compare_models()
+        compare_df = pull()
+        st.dataframe(compare_df , use_container_width= True)
+        st.session_state.compare_df = compare_df
+        save_model(best_model, 'best_model') # saved remotely
+        st.session_state.best_model = best_model
+        st.info(st.session_state.best_model)
+        with open('best_model.pkl', 'rb') as f:
+            st.download_button('Download Top Model', f, file_name="best_model_d.pkl") #saved locally
+
+    else : 
+        if 'setup_df' in st.session_state:
+            st.dataframe(st.session_state.setup_df)
+        if 'compare_df' in st.session_state:
+            st.dataframe(st.session_state.compare_df)
+        if 'best_model' in st.session_state:
             st.info(st.session_state.best_model)
             with open('best_model.pkl', 'rb') as f:
                 st.download_button('Download Top Model', f, file_name="best_model_d.pkl") #saved locally
 
-        else : 
-            if 'setup_df' in st.session_state:
-                st.dataframe(st.session_state.setup_df)
-            if 'compare_df' in st.session_state:
-                st.dataframe(st.session_state.compare_df)
-            if 'best_model' in st.session_state:
-                st.info(st.session_state.best_model)
-                with open('best_model.pkl', 'rb') as f:
-                    st.download_button('Download Top Model', f, file_name="best_model_d.pkl") #saved locally
-    except : 
-        st.info('Dataframe not uploaded')
 
 
